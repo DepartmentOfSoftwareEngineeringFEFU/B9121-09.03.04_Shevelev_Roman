@@ -290,7 +290,3 @@ npm start
 - `/api/problems` - задачи
 - `/api/trainers` - тренажеры
 - `/api/achievements` - достижения
-
-## Лицензия
-
-MIT
