@@ -1,7 +1,6 @@
 import React, { useContext, useState } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { Navigate } from "react-router-dom";
 import AuthContext from "../context/AuthContext";
 import useTrainingProgress from "../hooks/useTrainingProgress";
 import Swal from "sweetalert2";
@@ -16,7 +15,6 @@ import {
   faHandshake,
   faBook,
   faQuestionCircle,
-  faUsers,
 } from "@fortawesome/free-solid-svg-icons";
 
 const CardsGridContainer = styled.div`
@@ -247,6 +245,59 @@ const InviteUserForm = styled.form`
   padding: 10px 12px;
 `;
 
+const UserGroupSection = styled.div`
+  margin-top: 24px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 18px 16px;
+  box-shadow: 0 2px 8px rgba(160, 82, 45, 0.1);
+`;
+
+const UserGroupTitle = styled.h3`
+  color: #ffd700;
+  margin-bottom: 12px;
+`;
+
+const UserGroupInfo = styled.div`
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  color: #fffbe6;
+  font-size: 1.05rem;
+  margin-bottom: 12px;
+`;
+
+const UserGroupRow = styled.div`
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const UserGroupLabel = styled.span`
+  color: #ffd700;
+  font-weight: 600;
+`;
+
+const UserGroupValue = styled.span`
+  color: #fffbe6;
+`;
+
+const LeaveGroupButton = styled.button`
+  background: #f44336;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+  &:hover {
+    background: #d32f2f;
+  }
+`;
+
 const AutocompleteList = styled.ul`
   list-style: none;
   margin: 0;
@@ -272,7 +323,7 @@ const AutocompleteItem = styled.li`
 `;
 
 const Profile = () => {
-  const { isLoggedIn, userData, fetchUserData } = useContext(AuthContext);
+  const { userData, fetchUserData } = useContext(AuthContext);
   const progress = useTrainingProgress();
 
   const [nickname, setNickname] = useState(userData?.Nickname || "");
@@ -295,6 +346,8 @@ const Profile = () => {
   const [selectedInviteUser, setSelectedInviteUser] = useState(null);
   const [inviteError, setInviteError] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [userGroup, setUserGroup] = useState(null);
+  const [userGroupLoading, setUserGroupLoading] = useState(false);
 
   const fetchInvites = async () => {
     setInvitesLoading(true);
@@ -316,8 +369,29 @@ const Profile = () => {
     }
   };
 
+  const fetchUserGroup = async () => {
+    setUserGroupLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/users/user/group", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setUserGroup(data);
+      } else {
+        setUserGroup(null);
+      }
+    } catch {
+      setUserGroup(null);
+    } finally {
+      setUserGroupLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     fetchInvites();
+    fetchUserGroup();
   }, []);
 
   if (!userData) {
@@ -484,6 +558,7 @@ const Profile = () => {
       if (res.ok) {
         Swal.fire({ icon: "success", title: "Вы вступили в группу" });
         fetchInvites();
+        fetchUserGroup();
       } else {
         Swal.fire({ icon: "error", title: "Ошибка", text: data.message });
       }
@@ -583,6 +658,55 @@ const Profile = () => {
       setInviteError("Ошибка сети");
     } finally {
       setInviteLoading(false);
+    }
+  };
+
+  const handleLeaveGroup = async () => {
+    if (!userGroup) return;
+    
+    const result = await Swal.fire({
+      title: "Покинуть группу?",
+      text: `Вы действительно хотите покинуть группу "${userGroup.Name}"?`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Да, покинуть",
+      cancelButtonText: "Отмена",
+      confirmButtonColor: "#f44336",
+    });
+    
+    if (result.isConfirmed) {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch("/users/user/leave-group", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ groupId: userGroup.ID }),
+        });
+        const data = await res.json();
+        if (res.ok) {
+          Swal.fire({
+            icon: "success",
+            title: "Вы покинули группу",
+            text: data.message,
+          });
+          setUserGroup(null);
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Ошибка",
+            text: data.message || "Не удалось покинуть группу",
+          });
+        }
+      } catch (error) {
+        Swal.fire({
+          icon: "error",
+          title: "Ошибка сети",
+          text: "Не удалось покинуть группу. Попробуйте позже.",
+        });
+      }
     }
   };
 
@@ -778,6 +902,21 @@ const Profile = () => {
                   Группы
                 </SmallButton>
               )}
+              
+              {/* Кнопка для тренера: ученики */}
+              {!editMode && userData.Role === "Trainer" && (
+                <SmallButton
+                  style={{
+                    marginTop: 12,
+                    background: "#2196f3",
+                    color: "#fff",
+                  }}
+                  onClick={() => window.location.href = "/students"}
+                >
+                  <i className="fas fa-chart-line" style={{ marginRight: 8 }}></i>
+                  Мои ученики
+                </SmallButton>
+              )}
               {/* Список групп тренера */}
               {showGroups && userData.Role === "Trainer" && (
                 <GroupsSection>
@@ -948,6 +1087,43 @@ const Profile = () => {
                     ))}
                   </InviteList>
                 </InvitesSection>
+              ) : null}
+              
+              {/* Раздел информации о группе пользователя */}
+              {userGroupLoading ? (
+                <UserGroupSection>
+                  <UserGroupTitle>Моя группа</UserGroupTitle>
+                  <div style={{ color: "#ffd700" }}>Загрузка...</div>
+                </UserGroupSection>
+              ) : userGroup ? (
+                <UserGroupSection>
+                  <UserGroupTitle>Моя группа</UserGroupTitle>
+                  <UserGroupInfo>
+                    <UserGroupRow>
+                      <UserGroupLabel>Название:</UserGroupLabel>
+                      <UserGroupValue>{userGroup.Name}</UserGroupValue>
+                    </UserGroupRow>
+                    {userGroup.Description && (
+                      <UserGroupRow>
+                        <UserGroupLabel>Описание:</UserGroupLabel>
+                        <UserGroupValue>{userGroup.Description}</UserGroupValue>
+                      </UserGroupRow>
+                    )}
+                    <UserGroupRow>
+                      <UserGroupLabel>Тренер:</UserGroupLabel>
+                      <UserGroupValue>{userGroup.TrainerName}</UserGroupValue>
+                    </UserGroupRow>
+                    <UserGroupRow>
+                      <UserGroupLabel>Дата создания:</UserGroupLabel>
+                      <UserGroupValue>
+                        {userGroup.CreatedAt && new Date(userGroup.CreatedAt).toLocaleDateString()}
+                      </UserGroupValue>
+                    </UserGroupRow>
+                  </UserGroupInfo>
+                  <LeaveGroupButton onClick={handleLeaveGroup}>
+                    Покинуть группу
+                  </LeaveGroupButton>
+                </UserGroupSection>
               ) : null}
             </>
           )}

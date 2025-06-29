@@ -14,6 +14,7 @@ import ProblemCategoryPage from "./pages/ProblemCategoryPage";
 import ProblemPage from "./pages/ProblemPage";
 import TrainerGame from "./components/interactive/TrainerGame";
 import Admin from "./pages/Admin";
+import StudentsPage from "./pages/StudentsPage";
 
 const AppContainer = styled.div`
   font-family: "Montserrat", sans-serif;
@@ -205,6 +206,11 @@ function AppRoutes() {
           <Route path="/training/trainer" element={
             <PrivateRoute>
               <TrainerGame />
+            </PrivateRoute>
+          } />
+          <Route path="/students" element={
+            <PrivateRoute>
+              <StudentsPage />
             </PrivateRoute>
           } />
         </Routes>

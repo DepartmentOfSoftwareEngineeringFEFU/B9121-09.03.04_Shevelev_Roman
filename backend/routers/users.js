@@ -66,6 +66,10 @@ router.post(
   usersController.revokeTrainer
 );
 
+router.get("/admin/groups", adminBasicAuth, usersController.getAllGroups);
+router.get("/admin/users", adminBasicAuth, usersController.getAllUsers);
+router.get("/admin/stats", adminBasicAuth, usersController.getAdminStats);
+
 router.get("/trainer/groups", protect, usersController.getTrainerGroups);
 router.post("/trainer/groups", protect, usersController.createGroup);
 router.post("/trainer/invite", protect, usersController.inviteUserToGroup);
@@ -81,6 +85,11 @@ router.post(
   protect,
   usersController.declineGroupInvite
 );
+
+router.get("/user/group", protect, usersController.getUserGroup);
+router.post("/user/leave-group", protect, usersController.leaveGroup);
+
+router.get("/trainer/students", protect, usersController.getTrainerStudents);
 
 router.get("/:userId", async (req, res) => {
   const userId = req.params.userId;
